@@ -1,0 +1,324 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── ENUMS ───────────────────────────────────────────────
+
+enum TenantPlan {
+  STARTER
+  BUSINESS
+  PRO
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  STAFF
+  INSTRUCTOR
+}
+
+enum StudentStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  FROZEN
+}
+
+enum PaymentMethod {
+  PIX
+  BOLETO
+  CARD
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+  REFUNDED
+}
+
+enum LeadStage {
+  NEW
+  CONTACTED
+  DEMO
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum NotifChannel {
+  WHATSAPP
+  EMAIL
+  PUSH
+}
+
+enum NotifStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+// ─── TENANT ──────────────────────────────────────────────
+
+model Tenant {
+  id           String      @id @default(uuid())
+  name         String
+  slug         String      @unique
+  plan         TenantPlan  @default(STARTER)
+  settings     Json        @default("{}")
+  active       Boolean     @default(true)
+  trialEndsAt  DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  users        User[]
+  students     Student[]
+  academyPlans AcademyPlan[]
+  classes      Class[]
+  leads        Lead[]
+}
+
+// ─── USER (colaboradores da academia) ────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  name         String
+  email        String
+  passwordHash String
+  role         UserRole @default(STAFF)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+// ─── STUDENT (alunos) ────────────────────────────────────
+
+model Student {
+  id            String         @id @default(uuid())
+  tenantId      String
+  tenant        Tenant         @relation(fields: [tenantId], references: [id])
+  name          String
+  cpf           String?
+  email         String?
+  phone         String?
+  photoUrl      String?
+  birthdate     DateTime?
+  status        StudentStatus  @default(ACTIVE)
+  notes         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  enrollments   Enrollment[]
+  checkins      ClassCheckin[]
+  workouts      Workout[]
+  physicalEvals PhysicalEval[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, name])
+}
+
+// ─── ACADEMY PLAN (planos da academia) ───────────────────
+
+model AcademyPlan {
+  id           String       @id @default(uuid())
+  tenantId     String
+  tenant       Tenant       @relation(fields: [tenantId], references: [id])
+  name         String
+  price        Decimal      @db.Decimal(10, 2)
+  durationDays Int
+  description  String?
+  active       Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  enrollments  Enrollment[]
+
+  @@index([tenantId])
+}
+
+// ─── ENROLLMENT (matrículas) ─────────────────────────────
+
+model Enrollment {
+  id        String           @id @default(uuid())
+  tenantId  String
+  studentId String
+  student   Student          @relation(fields: [studentId], references: [id])
+  planId    String
+  plan      AcademyPlan      @relation(fields: [planId], references: [id])
+  startDate DateTime
+  endDate   DateTime
+  status    EnrollmentStatus @default(ACTIVE)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  payments  Payment[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, endDate])
+  @@index([studentId])
+}
+
+// ─── PAYMENT (financeiro) ────────────────────────────────
+
+model Payment {
+  id           String        @id @default(uuid())
+  tenantId     String
+  enrollmentId String
+  enrollment   Enrollment    @relation(fields: [enrollmentId], references: [id])
+  amount       Decimal       @db.Decimal(10, 2)
+  method       PaymentMethod
+  status       PaymentStatus @default(PENDING)
+  dueDate      DateTime
+  paidAt       DateTime?
+  externalId   String?
+  pixCode      String?
+  boletoUrl    String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, dueDate])
+  @@index([externalId])
+}
+
+// ─── CLASS (aulas/turmas) ────────────────────────────────
+
+model Class {
+  id           String          @id @default(uuid())
+  tenantId     String
+  tenant       Tenant          @relation(fields: [tenantId], references: [id])
+  name         String
+  instructorId String?
+  weekday      Int
+  startTime    String
+  endTime      String
+  capacity     Int
+  active       Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  schedules    ClassSchedule[]
+
+  @@index([tenantId])
+}
+
+model ClassSchedule {
+  id        String         @id @default(uuid())
+  classId   String
+  class     Class          @relation(fields: [classId], references: [id])
+  date      DateTime       @db.Date
+  status    String         @default("SCHEDULED")
+  createdAt DateTime       @default(now())
+  checkins  ClassCheckin[]
+
+  @@index([classId])
+  @@index([date])
+}
+
+model ClassCheckin {
+  id              String        @id @default(uuid())
+  classScheduleId String
+  schedule        ClassSchedule @relation(fields: [classScheduleId], references: [id])
+  studentId       String
+  student         Student       @relation(fields: [studentId], references: [id])
+  checkedAt       DateTime      @default(now())
+
+  @@unique([classScheduleId, studentId])
+  @@index([studentId])
+}
+
+// ─── WORKOUT (treinos) ───────────────────────────────────
+
+model Workout {
+  id        String        @id @default(uuid())
+  tenantId  String
+  studentId String
+  student   Student       @relation(fields: [studentId], references: [id])
+  createdBy String
+  name      String
+  notes     String?
+  createdAt DateTime      @default(now())
+  items     WorkoutItem[]
+
+  @@index([tenantId])
+  @@index([studentId])
+}
+
+model WorkoutItem {
+  id         String  @id @default(uuid())
+  workoutId  String
+  workout    Workout @relation(fields: [workoutId], references: [id])
+  exerciseId String
+  sets       Int
+  reps       String
+  restSecs   Int?
+  notes      String?
+  order      Int
+}
+
+// ─── LEAD (CRM) ──────────────────────────────────────────
+
+model Lead {
+  id        String    @id @default(uuid())
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  name      String
+  phone     String?
+  email     String?
+  source    String?
+  stage     LeadStage @default(NEW)
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, stage])
+}
+
+// ─── PHYSICAL EVAL (avaliação física) ───────────────────
+
+model PhysicalEval {
+  id          String   @id @default(uuid())
+  tenantId    String
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id])
+  weight      Decimal? @db.Decimal(5, 2)
+  height      Decimal? @db.Decimal(5, 2)
+  bodyFat     Decimal? @db.Decimal(4, 2)
+  notes       String?
+  photos      Json     @default("[]")
+  evaluatedAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([studentId])
+}
+
+// ─── NOTIFICATION LOG ────────────────────────────────────
+
+model NotificationLog {
+  id        String       @id @default(uuid())
+  tenantId  String
+  type      String
+  channel   NotifChannel
+  status    NotifStatus  @default(PENDING)
+  payload   Json
+  sentAt    DateTime?
+  createdAt DateTime     @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}

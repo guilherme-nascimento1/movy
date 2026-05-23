@@ -1,0 +1,25 @@
+# Claude Code
+.claude/
+CLAUDE.md
+prompt-saas-fitness-claude.md
+
+# Dependências
+node_modules/
+
+# Variáveis de ambiente
+.env
+.env.local
+.env.*.local
+
+# Build
+dist/
+.next/
+out/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
