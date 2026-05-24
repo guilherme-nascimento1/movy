@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody } 
 import { IsString, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { CheckinsService } from './checkins.service';
+import { CheckinListResponseDto, CheckinResponseDto } from './dto/checkin-response.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { TenantId } from '../../common/decorators';
@@ -20,11 +21,13 @@ class CreateCheckinDto {
 export class CheckinsController {
   constructor(private readonly checkinsService: CheckinsService) {}
 
-  @ApiOperation({ summary: 'Fazer check-in em uma aula', description: 'Registra presença do aluno na aula programada' })
+  @ApiOperation({ summary: 'Fazer check-in', description: 'Registra presença do aluno na aula. Valida capacidade e duplicata.' })
   @ApiParam({ name: 'scheduleId', description: 'UUID da aula programada (ClassSchedule)' })
   @ApiBody({ type: CreateCheckinDto })
-  @ApiResponse({ status: 201, description: 'Check-in realizado' })
-  @ApiResponse({ status: 409, description: 'Aluno já fez check-in' })
+  @ApiResponse({ status: 201, type: CheckinResponseDto })
+  @ApiResponse({ status: 400, description: 'Capacidade máxima da aula atingida' })
+  @ApiResponse({ status: 404, description: 'Aula ou aluno não encontrado' })
+  @ApiResponse({ status: 409, description: 'Aluno já fez check-in nesta aula' })
   @Post('schedule/:scheduleId')
   create(
     @TenantId() tenantId: string,
@@ -34,15 +37,17 @@ export class CheckinsController {
     return this.checkinsService.create(tenantId, scheduleId, dto.studentId);
   }
 
-  @ApiOperation({ summary: 'Listar check-ins de uma aula programada' })
-  @ApiParam({ name: 'scheduleId' })
+  @ApiOperation({ summary: 'Check-ins de uma aula', description: 'Lista todos os check-ins de um ClassSchedule específico' })
+  @ApiParam({ name: 'scheduleId', description: 'UUID do ClassSchedule' })
+  @ApiResponse({ status: 200, type: CheckinListResponseDto })
   @Get('schedule/:scheduleId')
   findBySchedule(@TenantId() tenantId: string, @Param('scheduleId') scheduleId: string): Promise<object> {
     return this.checkinsService.findBySchedule(tenantId, scheduleId);
   }
 
-  @ApiOperation({ summary: 'Histórico de check-ins de um aluno' })
-  @ApiParam({ name: 'studentId' })
+  @ApiOperation({ summary: 'Histórico de check-ins do aluno', description: 'Retorna todas as aulas que o aluno frequentou, paginado' })
+  @ApiParam({ name: 'studentId', description: 'UUID do aluno' })
+  @ApiResponse({ status: 200, type: CheckinListResponseDto })
   @Get('student/:studentId')
   findByStudent(
     @TenantId() tenantId: string,
@@ -52,8 +57,9 @@ export class CheckinsController {
     return this.checkinsService.findByStudent(tenantId, studentId, query);
   }
 
-  @ApiOperation({ summary: 'Remover check-in' })
-  @ApiParam({ name: 'id' })
+  @ApiOperation({ summary: 'Remover check-in', description: 'Remove presença do aluno na aula' })
+  @ApiParam({ name: 'id', description: 'UUID do check-in' })
+  @ApiResponse({ status: 200, schema: { properties: { data: { properties: { message: { type: 'string', example: 'Check-in removido com sucesso' } } } } } })
   @Delete(':id')
   remove(@TenantId() tenantId: string, @Param('id') id: string): Promise<object> {
     return this.checkinsService.remove(tenantId, id);
