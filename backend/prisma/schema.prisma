@@ -244,6 +244,20 @@ model ClassCheckin {
 
 // ─── WORKOUT (treinos) ───────────────────────────────────
 
+model Exercise {
+  id          String        @id @default(uuid())
+  tenantId    String
+  name        String
+  category    String?
+  videoUrl    String?
+  description String?
+  createdAt   DateTime      @default(now())
+  items       WorkoutItem[]
+
+  @@index([tenantId])
+  @@index([tenantId, name])
+}
+
 model Workout {
   id        String        @id @default(uuid())
   tenantId  String
@@ -260,10 +274,11 @@ model Workout {
 }
 
 model WorkoutItem {
-  id         String  @id @default(uuid())
+  id         String   @id @default(uuid())
   workoutId  String
-  workout    Workout @relation(fields: [workoutId], references: [id])
+  workout    Workout  @relation(fields: [workoutId], references: [id])
   exerciseId String
+  exercise   Exercise @relation(fields: [exerciseId], references: [id])
   sets       Int
   reps       String
   restSecs   Int?
