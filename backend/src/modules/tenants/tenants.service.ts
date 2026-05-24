@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 
@@ -16,9 +17,13 @@ export class TenantsService {
     const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
     if (!tenant) throw new NotFoundException('Academia não encontrada');
 
+    const { settings, ...rest } = dto;
     const updated = await this.prisma.tenant.update({
       where: { id: tenantId },
-      data: { ...dto },
+      data: {
+        ...rest,
+        ...(settings !== undefined && { settings: settings as Prisma.InputJsonValue }),
+      },
     });
     return { data: updated };
   }
