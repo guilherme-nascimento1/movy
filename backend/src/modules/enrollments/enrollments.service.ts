@@ -30,8 +30,13 @@ export class EnrollmentsService {
   }
 
   async findAll(tenantId: string, query: PaginationDto & { studentId?: string; status?: string }): Promise<object> {
-    const { page = 1, limit = 20, studentId, status } = query;
+    const { studentId } = query;
+    const page = Number(query.page) || 1;
+    const limit = Math.min(Number(query.limit) || 20, 100);
     const skip = (page - 1) * limit;
+
+    const validStatuses = ['ACTIVE', 'EXPIRED', 'CANCELLED', 'FROZEN'];
+    const status = validStatuses.includes(query.status as string) ? query.status : undefined;
 
     const where = { tenantId, ...(studentId && { studentId }), ...(status && { status: status as never }) };
 

@@ -20,12 +20,17 @@ export class PaymentsService {
   }
 
   async findAll(tenantId: string, query: PaginationDto & { status?: string; enrollmentId?: string }): Promise<object> {
-    const { page = 1, limit = 20, status, enrollmentId } = query;
+    const { enrollmentId } = query;
+    const page = Number(query.page) || 1;
+    const limit = Math.min(Number(query.limit) || 20, 100);
     const skip = (page - 1) * limit;
+
+    const validStatuses = Object.values(PaymentStatus) as string[];
+    const status = validStatuses.includes(query.status as string) ? query.status as PaymentStatus : undefined;
 
     const where = {
       tenantId,
-      ...(status && { status: status as PaymentStatus }),
+      ...(status && { status }),
       ...(enrollmentId && { enrollmentId }),
     };
 
@@ -42,7 +47,8 @@ export class PaymentsService {
   }
 
   async findOverdue(tenantId: string, query: PaginationDto): Promise<object> {
-    const { page = 1, limit = 20 } = query;
+    const page = Number(query.page) || 1;
+    const limit = Math.min(Number(query.limit) || 20, 100);
     const skip = (page - 1) * limit;
 
     const where = {

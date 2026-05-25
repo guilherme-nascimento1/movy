@@ -13,7 +13,8 @@ export class ClassesService {
   }
 
   async findAll(tenantId: string, query: PaginationDto): Promise<object> {
-    const { page = 1, limit = 20 } = query;
+    const page = Number(query.page) || 1;
+    const limit = Math.min(Number(query.limit) || 20, 100);
     const skip = (page - 1) * limit;
 
     const [data, total] = await this.prisma.$transaction([
@@ -61,7 +62,9 @@ export class ClassesService {
   }
 
   async getSchedules(tenantId: string, query: { date?: string; classId?: string } & PaginationDto): Promise<object> {
-    const { page = 1, limit = 20, date, classId } = query;
+    const { date, classId } = query;
+    const page = Number(query.page) || 1;
+    const limit = Math.min(Number(query.limit) || 20, 100);
     const skip = (page - 1) * limit;
 
     const [data, total] = await this.prisma.$transaction([

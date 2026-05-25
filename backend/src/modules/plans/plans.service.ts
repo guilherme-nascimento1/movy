@@ -14,7 +14,8 @@ export class PlansService {
   }
 
   async findAll(tenantId: string, query: PaginationDto): Promise<object> {
-    const { page = 1, limit = 20 } = query;
+    const page = Number(query.page) || 1;
+    const limit = Math.min(Number(query.limit) || 20, 100);
     const skip = (page - 1) * limit;
 
     const [data, total] = await this.prisma.$transaction([

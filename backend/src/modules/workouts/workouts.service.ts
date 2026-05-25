@@ -15,7 +15,9 @@ export class WorkoutsService {
   }
 
   async findAllExercises(tenantId: string, query: PaginationDto & { category?: string }): Promise<object> {
-    const { page = 1, limit = 50, category } = query;
+    const { category } = query;
+    const page = Number(query.page) || 1;
+    const limit = Math.min(Number(query.limit) || 50, 100);
     const skip = (page - 1) * limit;
 
     const where = { tenantId, ...(category && { category }) };
@@ -57,7 +59,8 @@ export class WorkoutsService {
   }
 
   async findByStudent(tenantId: string, studentId: string, query: PaginationDto): Promise<object> {
-    const { page = 1, limit = 20 } = query;
+    const page = Number(query.page) || 1;
+    const limit = Math.min(Number(query.limit) || 20, 100);
     const skip = (page - 1) * limit;
 
     const student = await this.prisma.student.findFirst({ where: { id: studentId, tenantId } });
