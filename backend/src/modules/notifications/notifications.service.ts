@@ -8,13 +8,17 @@ export class NotificationsService {
   constructor(private prisma: PrismaService) {}
 
   async findAll(tenantId: string, query: PaginationDto & { status?: string; channel?: string }): Promise<object> {
-    const { page = 1, limit = 20, status, channel } = query;
+    const { status, channel } = query;
+    const page = Number(query.page) || 1;
+    const limit = Math.min(Number(query.limit) || 20, 100);
     const skip = (page - 1) * limit;
 
+    const validStatuses = Object.values(NotifStatus) as string[];
+    const validChannels = Object.values(NotifChannel) as string[];
     const where = {
       tenantId,
-      ...(status && { status: status as NotifStatus }),
-      ...(channel && { channel: channel as NotifChannel }),
+      ...(status && validStatuses.includes(status) && { status: status as NotifStatus }),
+      ...(channel && validChannels.includes(channel) && { channel: channel as NotifChannel }),
     };
 
     const [data, total] = await this.prisma.$transaction([

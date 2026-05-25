@@ -15,12 +15,15 @@ export class LeadsService {
   }
 
   async findAll(tenantId: string, query: PaginationDto & { stage?: string; search?: string }): Promise<object> {
-    const { page = 1, limit = 20, stage, search } = query;
+    const { stage, search } = query;
+    const page = Number(query.page) || 1;
+    const limit = Math.min(Number(query.limit) || 20, 100);
     const skip = (page - 1) * limit;
 
+    const validStages = Object.values(LeadStage) as string[];
     const where = {
       tenantId,
-      ...(stage && { stage: stage as LeadStage }),
+      ...(stage && validStages.includes(stage) && { stage: stage as LeadStage }),
       ...(search && {
         OR: [
           { name: { contains: search, mode: 'insensitive' as const } },

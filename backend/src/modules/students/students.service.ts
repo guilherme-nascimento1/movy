@@ -22,12 +22,15 @@ export class StudentsService {
   }
 
   async findAll(tenantId: string, query: StudentQueryDto): Promise<object> {
-    const { page = 1, limit = 20, search, status } = query;
-    const skip = (page - 1) * limit;
+    const { page = 1, limit = 20, search } = query;
+    const validStatuses = ['ACTIVE', 'INACTIVE', 'SUSPENDED'];
+    const status = validStatuses.includes(query.status as string) ? query.status : undefined;
+    const skip = (page - 1) * (Number(limit) || 20);
+    const take = Math.min(Number(limit) || 20, 100);
 
     const where = {
       tenantId,
-      ...(status ? { status } : { status: { not: 'INACTIVE' as const } }),
+      ...(status ? { status } : {}),
       ...(search && {
         OR: [
           { name: { contains: search, mode: 'insensitive' as const } },
@@ -39,7 +42,7 @@ export class StudentsService {
     };
 
     const [data, total] = await this.prisma.$transaction([
-      this.prisma.student.findMany({ where, skip, take: limit, orderBy: { name: 'asc' } }),
+      this.prisma.student.findMany({ where, skip, take, orderBy: { name: 'asc' } }),
       this.prisma.student.count({ where }),
     ]);
 
