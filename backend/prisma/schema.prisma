@@ -308,19 +308,58 @@ model Lead {
 // ─── PHYSICAL EVAL (avaliação física) ───────────────────
 
 model PhysicalEval {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   tenantId    String
   studentId   String
-  student     Student  @relation(fields: [studentId], references: [id])
-  weight      Decimal? @db.Decimal(5, 2)
-  height      Decimal? @db.Decimal(5, 2)
-  bodyFat     Decimal? @db.Decimal(4, 2)
-  notes       String?
-  photos      Json     @default("[]")
-  evaluatedAt DateTime @default(now())
+  student     Student   @relation(fields: [studentId], references: [id])
+  evaluatedAt DateTime  @default(now())
+  nextEvalAt  DateTime?
+  evaluatedBy String?
+  active      Boolean   @default(true)
+
+  // Anamnese
+  objectives    String?
+  healthHistory Json    @default("{}")
+  parqAnswers   Json    @default("{}")
+
+  // Protocolo de dobras
+  protocol String? // POLLOCK_3, POLLOCK_7, JACKSON_POLLOCK, DURNIN_WOMERSLEY
+
+  // Composição corporal
+  weight   Decimal? @db.Decimal(5, 2) // kg
+  height   Decimal? @db.Decimal(5, 2) // cm
+  bmi      Decimal? @db.Decimal(4, 2) // calculado automaticamente
+  bodyFat  Decimal? @db.Decimal(4, 2) // %
+  leanMass Decimal? @db.Decimal(5, 2) // kg
+
+  // Circunferências (cm)
+  waist   Decimal? @db.Decimal(5, 1)
+  hip     Decimal? @db.Decimal(5, 1)
+  chest   Decimal? @db.Decimal(5, 1)
+  abdomen Decimal? @db.Decimal(5, 1)
+  thigh   Decimal? @db.Decimal(5, 1)
+  arm     Decimal? @db.Decimal(5, 1)
+  calf    Decimal? @db.Decimal(5, 1)
+
+  // Dobras cutâneas (mm)
+  skinfoldChest       Decimal? @db.Decimal(4, 1)
+  skinfoldAbdomen     Decimal? @db.Decimal(4, 1)
+  skinfoldThigh       Decimal? @db.Decimal(4, 1)
+  skinfoldTricep      Decimal? @db.Decimal(4, 1)
+  skinfoldSubscapular Decimal? @db.Decimal(4, 1)
+  skinfoldSuprailiac  Decimal? @db.Decimal(4, 1)
+  skinfoldAxillary    Decimal? @db.Decimal(4, 1)
+
+  // Sinais vitais
+  bloodPressure String? // ex: "120/80"
+  restingHR     Int? // bpm
+
+  notes  String?
+  photos Json    @default("[]")
 
   @@index([tenantId])
   @@index([studentId])
+  @@index([studentId, evaluatedAt])
 }
 
 // ─── NOTIFICATION LOG ────────────────────────────────────

@@ -14,6 +14,7 @@ import { CheckinsModule } from './modules/checkins/checkins.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { WorkoutsModule } from './modules/workouts/workouts.module';
 import { LeadsModule } from './modules/leads/leads.module';
+import { PhysicalEvalsModule } from './modules/physical-evals/physical-evals.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { LeadsModule } from './modules/leads/leads.module';
     NotificationsModule,
     WorkoutsModule,
     LeadsModule,
+    PhysicalEvalsModule,
   ],
 })
 export class AppModule {}
