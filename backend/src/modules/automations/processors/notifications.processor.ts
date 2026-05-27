@@ -6,7 +6,7 @@ import { NotifChannel, NotifStatus } from '../../../common/enums';
 import { EvolutionApiService } from '../services/evolution-api.service';
 import { ResendService } from '../services/resend.service';
 
-export const NOTIFICATIONS_QUEUE = 'movy:notifications';
+export const NOTIFICATIONS_QUEUE = 'movy-notifications';
 
 export type BirthdayJob = { type: 'BIRTHDAY'; tenantId: string; studentId: string };
 export type AbsenceJob = { type: 'ABSENCE'; tenantId: string; studentId: string; days: number };

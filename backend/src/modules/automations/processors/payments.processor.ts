@@ -5,7 +5,7 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { NotifChannel, NotifStatus } from '../../../common/enums';
 import { EvolutionApiService } from '../services/evolution-api.service';
 
-export const PAYMENTS_QUEUE = 'movy:payments';
+export const PAYMENTS_QUEUE = 'movy-payments';
 
 export type MarkOverdueJob = { type: 'MARK_OVERDUE' };
 export type DunningJob = {
