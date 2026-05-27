@@ -89,6 +89,7 @@ model Tenant {
   academyPlans AcademyPlan[]
   classes      Class[]
   leads        Lead[]
+  units        Unit[]
 }
 
 // ─── USER (colaboradores da academia) ────────────────────
@@ -125,10 +126,13 @@ model Student {
   notes         String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
-  enrollments   Enrollment[]
-  checkins      ClassCheckin[]
-  workouts      Workout[]
-  physicalEvals PhysicalEval[]
+  enrollments      Enrollment[]
+  checkins         ClassCheckin[]
+  workouts         Workout[]
+  physicalEvals    PhysicalEval[]
+  wodResults       WodResult[]
+  personalRecords  PersonalRecord[]
+  beltGraduations  BeltGraduation[]
 
   @@index([tenantId])
   @@index([tenantId, status])
@@ -252,7 +256,8 @@ model Exercise {
   videoUrl    String?
   description String?
   createdAt   DateTime      @default(now())
-  items       WorkoutItem[]
+  items           WorkoutItem[]
+  personalRecords PersonalRecord[]
 
   @@index([tenantId])
   @@index([tenantId, name])
@@ -376,4 +381,143 @@ model NotificationLog {
 
   @@index([tenantId])
   @@index([tenantId, status])
+}
+
+// ─── CROSSFIT ────────────────────────────────────────────
+
+model Wod {
+  id          String      @id @default(uuid())
+  tenantId    String
+  date        DateTime    @db.Date
+  title       String
+  description String
+  wodType     String // FOR_TIME, AMRAP, EMOM, TABATA, STRENGTH, CUSTOM
+  timeCapSecs Int?
+  rounds      Int?
+  active      Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  results     WodResult[]
+
+  @@unique([tenantId, date])
+  @@index([tenantId])
+  @@index([tenantId, date])
+}
+
+model WodResult {
+  id        String   @id @default(uuid())
+  tenantId  String
+  wodId     String
+  wod       Wod      @relation(fields: [wodId], references: [id])
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id])
+  score     String // "12:34", "150 reps", "75 kg"
+  scoreType String // TIME, REPS, WEIGHT, ROUNDS
+  rx        Boolean  @default(false) // Rx ou Scaled
+  notes     String?
+  completedAt DateTime @default(now())
+
+  @@unique([wodId, studentId])
+  @@index([tenantId])
+  @@index([studentId])
+}
+
+model PersonalRecord {
+  id         String   @id @default(uuid())
+  tenantId   String
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id])
+  exerciseId String
+  exercise   Exercise @relation(fields: [exerciseId], references: [id])
+  value      Decimal  @db.Decimal(8, 2)
+  unit       String   // kg, reps, seconds, meters
+  notes      String?
+  achievedAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([studentId, exerciseId])
+}
+
+// ─── ARTES MARCIAIS ──────────────────────────────────────
+
+enum BeltColor {
+  WHITE
+  YELLOW
+  ORANGE
+  GREEN
+  BLUE
+  PURPLE
+  BROWN
+  BLACK
+  RED_BLACK
+  RED_WHITE
+  RED
+}
+
+model BeltGraduation {
+  id         String    @id @default(uuid())
+  tenantId   String
+  studentId  String
+  student    Student   @relation(fields: [studentId], references: [id])
+  belt       BeltColor
+  stripes    Int       @default(0) // 0-4 graus/listras
+  modality   String    // Jiu-Jitsu, Judô, Karatê, Muay Thai...
+  graduatedAt DateTime @default(now())
+  graduatedBy String?  // userId do professor
+  notes      String?
+
+  @@index([tenantId])
+  @@index([studentId])
+}
+
+// ─── UNIT (multi-unidade) ────────────────────────────────
+
+model Unit {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  name      String
+  address   String?
+  phone     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+// ─── TEAM MEMBER (gestão de equipe) ─────────────────────
+
+model TeamMember {
+  id        String   @id @default(uuid())
+  tenantId  String
+  userId    String
+  name      String
+  email     String
+  role      UserRole
+  specialty String?  // Ex: "Musculação", "CrossFit", "Pilates"
+  bio       String?
+  photoUrl  String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  goals     TeamGoal[]
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+}
+
+model TeamGoal {
+  id           String     @id @default(uuid())
+  tenantId     String
+  memberId     String
+  member       TeamMember @relation(fields: [memberId], references: [id])
+  title        String
+  targetValue  Decimal    @db.Decimal(10, 2)
+  currentValue Decimal    @db.Decimal(10, 2) @default(0)
+  unit         String     // "alunos", "R$", "aulas"
+  dueDate      DateTime
+  achieved     Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+
+  @@index([tenantId])
+  @@index([memberId])
 }

@@ -15,6 +15,14 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { WorkoutsModule } from './modules/workouts/workouts.module';
 import { LeadsModule } from './modules/leads/leads.module';
 import { PhysicalEvalsModule } from './modules/physical-evals/physical-evals.module';
+import { AutomationsModule } from './modules/automations/automations.module';
+import { AsaasModule } from './modules/asaas/asaas.module';
+import { ReportsModule } from './modules/reports/reports.module';
+import { CrossfitModule } from './modules/crossfit/crossfit.module';
+import { MartialArtsModule } from './modules/martial-arts/martial-arts.module';
+import { UnitsModule } from './modules/units/units.module';
+import { IntegrationsModule } from './modules/integrations/integrations.module';
+import { TeamModule } from './modules/team/team.module';
 
 @Module({
   imports: [
@@ -34,6 +42,14 @@ import { PhysicalEvalsModule } from './modules/physical-evals/physical-evals.mod
     WorkoutsModule,
     LeadsModule,
     PhysicalEvalsModule,
+    AutomationsModule,
+    AsaasModule,
+    ReportsModule,
+    CrossfitModule,
+    MartialArtsModule,
+    UnitsModule,
+    IntegrationsModule,
+    TeamModule,
   ],
 })
 export class AppModule {}
