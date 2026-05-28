@@ -9,10 +9,12 @@ import { PaymentsProcessor, PAYMENTS_QUEUE } from './processors/payments.process
 import { NotificationsProcessor, NOTIFICATIONS_QUEUE } from './processors/notifications.processor';
 import { EvolutionApiService } from './services/evolution-api.service';
 import { ResendService } from './services/resend.service';
+import { AiModule } from '../ai/ai.module';
 
 @Module({
   imports: [
     ConfigModule,
+    AiModule,
     ScheduleModule.forRoot(),
     BullModule.forRootAsync({
       imports: [ConfigModule],

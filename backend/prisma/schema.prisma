@@ -130,9 +130,12 @@ model Student {
   checkins         ClassCheckin[]
   workouts         Workout[]
   physicalEvals    PhysicalEval[]
-  wodResults       WodResult[]
-  personalRecords  PersonalRecord[]
-  beltGraduations  BeltGraduation[]
+  wodResults        WodResult[]
+  personalRecords   PersonalRecord[]
+  beltGraduations   BeltGraduation[]
+  churnAlerts       ChurnAlert[]
+  churnRiskScore    Int       @default(0)
+  churnRiskUpdatedAt DateTime?
 
   @@index([tenantId])
   @@index([tenantId, status])
@@ -520,4 +523,29 @@ model TeamGoal {
 
   @@index([tenantId])
   @@index([memberId])
+}
+
+// ─── MOVY AI ─────────────────────────────────────────────
+
+model ChurnAlert {
+  id        String   @id @default(uuid())
+  tenantId  String
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id])
+  score     Int
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([studentId])
+}
+
+model AiUsageLog {
+  id         String   @id @default(uuid())
+  tenantId   String
+  endpoint   String
+  tokensUsed Int
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, createdAt])
 }

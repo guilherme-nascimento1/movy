@@ -25,6 +25,7 @@
     "prisma:seed": "prisma db seed"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.100.0",
     "@emnapi/core": "^1.10.0",
     "@emnapi/runtime": "^1.10.0",
     "@nestjs/bullmq": "^11.0.4",

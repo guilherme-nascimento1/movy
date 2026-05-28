@@ -1,12 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { AutomationsService } from './automations.service';
+import { AiService } from '../ai/ai.service';
 
 @Injectable()
 export class AutomationsScheduler {
   private readonly logger = new Logger(AutomationsScheduler.name);
 
-  constructor(private automations: AutomationsService) {}
+  constructor(
+    private automations: AutomationsService,
+    private aiService: AiService,
+  ) {}
 
   @Cron('0 6 * * *', { name: 'mark-overdue', timeZone: 'America/Sao_Paulo' })
   async markOverduePayments(): Promise<void> {
@@ -36,5 +40,11 @@ export class AutomationsScheduler {
   async absenceAlerts(): Promise<void> {
     this.logger.log('[Cron 10:00] Iniciando alertas de ausência');
     await this.automations.runAbsenceAlerts();
+  }
+
+  @Cron('0 3 * * *', { name: 'churn-risk', timeZone: 'America/Sao_Paulo' })
+  async churnRiskCalculation(): Promise<void> {
+    this.logger.log('[Cron 03:00] Iniciando cálculo de churn risk');
+    await this.aiService.calculateAllChurnRisks();
   }
 }

@@ -23,6 +23,7 @@ import { MartialArtsModule } from './modules/martial-arts/martial-arts.module';
 import { UnitsModule } from './modules/units/units.module';
 import { IntegrationsModule } from './modules/integrations/integrations.module';
 import { TeamModule } from './modules/team/team.module';
+import { AiModule } from './modules/ai/ai.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { TeamModule } from './modules/team/team.module';
     UnitsModule,
     IntegrationsModule,
     TeamModule,
+    AiModule,
   ],
 })
 export class AppModule {}
