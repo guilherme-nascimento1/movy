@@ -75,15 +75,28 @@ enum NotifStatus {
 // ─── TENANT ──────────────────────────────────────────────
 
 model Tenant {
-  id           String      @id @default(uuid())
-  name         String
-  slug         String      @unique
-  plan         TenantPlan  @default(STARTER)
-  settings     Json        @default("{}")
-  active       Boolean     @default(true)
-  trialEndsAt  DateTime?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id              String      @id @default(uuid())
+  name            String
+  slug            String      @unique
+  plan            TenantPlan  @default(STARTER)
+  settings        Json        @default("{}")
+  active          Boolean     @default(true)
+  trialEndsAt     DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  // Dados da academia
+  phone           String?
+  email           String?
+  cnpj            String?
+  address         String?
+  city            String?
+  state           String?     // UF: "SP", "RJ"...
+  zipCode         String?
+  logoUrl         String?
+  website         String?
+  instagram       String?
+  whatsappNumber  String?
+  businessHours   String?     // ex: "Seg-Sex 06h–22h | Sáb 08h–14h"
   users        User[]
   students     Student[]
   academyPlans AcademyPlan[]
