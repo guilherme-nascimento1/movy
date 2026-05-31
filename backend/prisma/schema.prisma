@@ -10,6 +10,19 @@ datasource db {
 
 // ─── ENUMS ───────────────────────────────────────────────
 
+enum BusinessModality {
+  MUSCULACAO
+  CROSSFIT
+  YOGA
+  PILATES
+  ARTES_MARCIAIS
+  NATACAO
+  DANCA
+  STUDIO_PERSONAL
+  SPINNING
+  BOXE
+}
+
 enum TenantPlan {
   STARTER
   BUSINESS
@@ -97,12 +110,60 @@ model Tenant {
   instagram       String?
   whatsappNumber  String?
   businessHours   String?     // ex: "Seg-Sex 06h–22h | Sáb 08h–14h"
+  // v3 — modalidades e onboarding
+  modalities         BusinessModality[] @default([MUSCULACAO])
+  onboardingComplete Boolean            @default(false)
   users        User[]
   students     Student[]
   academyPlans AcademyPlan[]
   classes      Class[]
   leads        Lead[]
   units        Unit[]
+  tenantSettings  TenantSettings?
+  auditLogs       TenantAuditLog[]
+}
+
+// ─── TENANT SETTINGS + AUDIT LOG ────────────────────────
+
+model TenantSettings {
+  id                String   @id @default(uuid())
+  tenantId          String   @unique
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  termForStudent    String   @default("Aluno")
+  termForClass      String   @default("Aula")
+  termForInstructor String   @default("Professor")
+  primaryColor      String   @default("#6366F1")
+  dashboardModules  String[] @default(["alunos-ativos", "receita", "inadimplentes", "novos-alunos"])
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model TenantAuditLog {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  userId    String
+  action    String
+  before    Json?
+  after     Json?
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, createdAt])
+}
+
+// ─── DEVICE TOKEN (push notifications) ──────────────────
+
+model DeviceToken {
+  id        String   @id @default(uuid())
+  tenantId  String
+  userId    String
+  token     String   @unique
+  app       String   // "movy-alunos" | "movy-gestao"
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([userId])
 }
 
 // ─── USER (colaboradores da academia) ────────────────────
@@ -149,6 +210,11 @@ model Student {
   churnAlerts       ChurnAlert[]
   churnRiskScore    Int       @default(0)
   churnRiskUpdatedAt DateTime?
+  // modalidades específicas
+  medicalCertificateExpiry DateTime?   // Natação / Boxe
+  combatRecords     CombatRecord[]
+  personalSessions  PersonalSession[]
+  sessionPackages   SessionPackage[]
 
   @@index([tenantId])
   @@index([tenantId, status])
@@ -232,6 +298,11 @@ model Class {
   capacity     Int
   active       Boolean         @default(true)
   createdAt    DateTime        @default(now())
+  // modalidades específicas
+  modality     String?         // ex: YOGA, PILATES, NATACAO
+  equipment    String?         // Pilates: Solo/Reformer/Cadillac/Chair/Barrel
+  danceStyle   String?         // Dança: Ballet/Jazz/Forró/etc
+  level        String?         // BEGINNER/INTERMEDIATE/ADVANCED
   schedules    ClassSchedule[]
 
   @@index([tenantId])
@@ -257,6 +328,10 @@ model ClassCheckin {
   studentId       String
   student         Student       @relation(fields: [studentId], references: [id])
   checkedAt       DateTime      @default(now())
+  // modalidades específicas
+  intention  String?  // Yoga: intenção da prática
+  laneNumber Int?     // Natação: número da raia
+  bikeNumber Int?     // Spinning: número da bike
 
   @@unique([classScheduleId, studentId])
   @@index([studentId])
@@ -265,13 +340,15 @@ model ClassCheckin {
 // ─── WORKOUT (treinos) ───────────────────────────────────
 
 model Exercise {
-  id          String        @id @default(uuid())
-  tenantId    String
-  name        String
-  category    String?
-  videoUrl    String?
-  description String?
-  createdAt   DateTime      @default(now())
+  id           String        @id @default(uuid())
+  tenantId     String
+  name         String
+  category     String?
+  videoUrl     String?
+  gifUrl       String?
+  thumbnailUrl String?
+  description  String?
+  createdAt    DateTime      @default(now())
   items           WorkoutItem[]
   personalRecords PersonalRecord[]
 
@@ -536,6 +613,115 @@ model TeamGoal {
 
   @@index([tenantId])
   @@index([memberId])
+}
+
+// ─── YOGA ────────────────────────────────────────────────
+
+model AsanaLibrary {
+  id           String   @id @default(uuid())
+  tenantId     String
+  namePt       String
+  nameSanskrit String?
+  category     String?  // Standing, Seated, Supine, Balancing, Backbend, Twist, Inversion
+  level        String?  // BEGINNER, INTERMEDIATE, ADVANCED
+  description  String?
+  gifUrl       String?
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, namePt])
+}
+
+// ─── DANÇA ───────────────────────────────────────────────
+
+model DanceEvent {
+  id         String   @id @default(uuid())
+  tenantId   String
+  name       String
+  danceStyle String?
+  date       DateTime
+  location   String?
+  notes      String?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, date])
+}
+
+// ─── EQUIPAMENTO (Spinning / Pilates) ────────────────────
+
+model Equipment {
+  id                String    @id @default(uuid())
+  tenantId          String
+  type              String    // BIKE, REFORMER, CADILLAC, CHAIR, BARREL
+  identifier        String    // "Bike 01", "Reformer 3"
+  status            String    @default("ACTIVE") // ACTIVE, MAINTENANCE, RETIRED
+  lastMaintenanceAt DateTime?
+  notes             String?
+  createdAt         DateTime  @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, type])
+}
+
+// ─── BOXE ────────────────────────────────────────────────
+
+model CombatRecord {
+  id           String   @id @default(uuid())
+  tenantId     String
+  studentId    String
+  student      Student  @relation(fields: [studentId], references: [id])
+  opponentName String?
+  result       String   // WIN, LOSS, DRAW
+  event        String?
+  date         DateTime
+  weight       Decimal? @db.Decimal(5, 2)
+  notes        String?
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([studentId])
+}
+
+// ─── STUDIO PERSONAL ─────────────────────────────────────
+
+model SessionPackage {
+  id            String            @id @default(uuid())
+  tenantId      String
+  studentId     String
+  student       Student           @relation(fields: [studentId], references: [id])
+  personalId    String
+  totalSessions Int
+  usedSessions  Int               @default(0)
+  price         Decimal           @db.Decimal(10, 2)
+  validUntil    DateTime?
+  status        String            @default("ACTIVE") // ACTIVE, EXPIRED, CANCELLED
+  createdAt     DateTime          @default(now())
+  sessions      PersonalSession[]
+
+  @@index([tenantId])
+  @@index([studentId])
+  @@index([personalId])
+}
+
+model PersonalSession {
+  id          String          @id @default(uuid())
+  tenantId    String
+  personalId  String
+  studentId   String
+  student     Student         @relation(fields: [studentId], references: [id])
+  packageId   String?
+  package     SessionPackage? @relation(fields: [packageId], references: [id])
+  scheduledAt DateTime
+  completedAt DateTime?
+  status      String          @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED, NO_SHOW
+  notes       String?
+  createdAt   DateTime        @default(now())
+
+  @@index([tenantId])
+  @@index([studentId])
+  @@index([personalId])
 }
 
 // ─── MOVY AI ─────────────────────────────────────────────

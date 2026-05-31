@@ -1,11 +1,18 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotifChannel, NotifStatus } from '../../common/enums';
 import { buildMeta, PaginationDto } from '../../common/dto/pagination.dto';
 
 @Injectable()
 export class NotificationsService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(NotificationsService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private httpService: HttpService,
+  ) {}
 
   async findAll(tenantId: string, query: PaginationDto & { status?: string; channel?: string }): Promise<object> {
     const { status, channel } = query;
@@ -56,6 +63,56 @@ export class NotificationsService {
     });
 
     return { data: log };
+  }
+
+  async sendPush(tenantId: string, dto: { expoPushTokens: string[]; title: string; body: string; data?: Record<string, unknown> }): Promise<object> {
+    const { expoPushTokens, title, body, data } = dto;
+
+    const messages = expoPushTokens.map((token) => ({
+      to: token,
+      sound: 'default',
+      title,
+      body,
+      data: data ?? {},
+    }));
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post<{ data: Array<{ status: string; message?: string }> }>(
+          'https://exp.host/--/api/v2/push/send',
+          messages,
+          { headers: { 'Content-Type': 'application/json', Accept: 'application/json' } },
+        ),
+      );
+
+      const results = response.data?.data ?? [];
+      const successCount = results.filter((r) => r.status === 'ok').length;
+
+      await this.prisma.notificationLog.create({
+        data: {
+          tenantId,
+          type: 'PUSH',
+          channel: NotifChannel.PUSH,
+          status: successCount > 0 ? NotifStatus.SENT : NotifStatus.FAILED,
+          payload: { title, body, tokens: expoPushTokens, results },
+          sentAt: successCount > 0 ? new Date() : null,
+        },
+      });
+
+      return { data: { sent: successCount, total: expoPushTokens.length } };
+    } catch (err: unknown) {
+      this.logger.error(`Erro ao enviar push: ${(err as Error).message}`);
+      await this.prisma.notificationLog.create({
+        data: {
+          tenantId,
+          type: 'PUSH',
+          channel: NotifChannel.PUSH,
+          status: NotifStatus.FAILED,
+          payload: { title, body, tokens: expoPushTokens, error: (err as Error).message },
+        },
+      });
+      return { data: { sent: 0, total: expoPushTokens.length, error: 'Falha ao enviar push notifications' } };
+    }
   }
 
   async getStats(tenantId: string): Promise<object> {

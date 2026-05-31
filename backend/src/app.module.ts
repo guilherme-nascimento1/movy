@@ -24,6 +24,15 @@ import { UnitsModule } from './modules/units/units.module';
 import { IntegrationsModule } from './modules/integrations/integrations.module';
 import { TeamModule } from './modules/team/team.module';
 import { AiModule } from './modules/ai/ai.module';
+// v3 — novos módulos
+import { DevicesModule } from './modules/devices/devices.module';
+import { YogaModule } from './modules/yoga/yoga.module';
+import { DanceModule } from './modules/dance/dance.module';
+import { SpinningModule } from './modules/spinning/spinning.module';
+import { BoxingModule } from './modules/boxing/boxing.module';
+import { StudioPersonalModule } from './modules/studio-personal/studio-personal.module';
+import { SwimmingModule } from './modules/swimming/swimming.module';
+import { PilatesModule } from './modules/pilates/pilates.module';
 
 @Module({
   imports: [
@@ -52,6 +61,15 @@ import { AiModule } from './modules/ai/ai.module';
     IntegrationsModule,
     TeamModule,
     AiModule,
+    // v3
+    DevicesModule,
+    YogaModule,
+    DanceModule,
+    SpinningModule,
+    BoxingModule,
+    StudioPersonalModule,
+    SwimmingModule,
+    PilatesModule,
   ],
 })
 export class AppModule {}

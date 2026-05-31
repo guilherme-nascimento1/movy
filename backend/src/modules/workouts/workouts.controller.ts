@@ -15,6 +15,15 @@ import type { JwtPayload } from '../../common/decorators';
 export class WorkoutsController {
   constructor(private readonly workoutsService: WorkoutsService) {}
 
+  @ApiOperation({ summary: 'Mídia do exercício', description: 'Retorna gifUrl, videoUrl e thumbnailUrl do exercício (hospedados no Cloudflare R2)' })
+  @ApiParam({ name: 'id', description: 'UUID do exercício' })
+  @ApiResponse({ status: 200, schema: { properties: { data: { properties: { gifUrl: { type: 'string', nullable: true }, videoUrl: { type: 'string', nullable: true }, thumbnailUrl: { type: 'string', nullable: true } } } } } })
+  @ApiResponse({ status: 404, description: 'Exercício não encontrado' })
+  @Get('exercises/:id/media')
+  getExerciseMedia(@TenantId() tenantId: string, @Param('id') id: string): Promise<object> {
+    return this.workoutsService.getExerciseMedia(tenantId, id);
+  }
+
   @ApiOperation({ summary: 'Criar exercício', description: 'Adiciona exercício à biblioteca do tenant' })
   @ApiResponse({ status: 201, schema: { properties: { data: { description: 'Exercício criado' } } } })
   @Post('exercises')

@@ -1,5 +1,6 @@
-import { Controller, Get, Post, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
+import { SendPushDto } from './dto/push-notification.dto';
 import { NotificationsService } from './notifications.service';
 import { NotificationListResponseDto, NotificationStatsResponseDto } from './dto/notification-response.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
@@ -33,6 +34,19 @@ export class NotificationsController {
   @Get('stats')
   getStats(@TenantId() tenantId: string): Promise<object> {
     return this.notificationsService.getStats(tenantId);
+  }
+
+  @ApiOperation({
+    summary: 'Enviar push notification',
+    description: 'Disparo interno de push para apps mobile via Expo Push API. Registra em NotificationLog.',
+  })
+  @ApiResponse({ status: 201, schema: { properties: { data: { properties: { sent: { type: 'number' }, total: { type: 'number' } } } } } })
+  @Post('push')
+  sendPush(
+    @TenantId() tenantId: string,
+    @Body() dto: SendPushDto,
+  ): Promise<object> {
+    return this.notificationsService.sendPush(tenantId, dto);
   }
 
   @ApiOperation({

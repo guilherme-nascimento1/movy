@@ -10,7 +10,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { TenantId, Roles } from '../../common/decorators';
 import { UserRole } from '../../common/enums';
 import { AiService } from './ai.service';
-import { AiChatDto, GenerateMessageDto } from './dto/ai.dto';
+import { AiChatDto, GenerateMessageDto, WorkoutSuggestDto } from './dto/ai.dto';
 
 @ApiTags('ai')
 @ApiBearerAuth('access-token')
@@ -57,6 +57,17 @@ export class AiController {
   @Post('insights/monthly')
   getMonthlyInsights(@TenantId() tenantId: string) {
     return this.aiService.getMonthlyInsights(tenantId);
+  }
+
+  @ApiOperation({
+    summary: 'Sugestão de treino por IA',
+    description: 'Sugere ficha de treino personalizada para o aluno com base no objetivo, modalidade e histórico. Usado pelo movy-personal.',
+  })
+  @ApiResponse({ status: 200, description: 'Sugestão gerada com sucesso' })
+  @ApiResponse({ status: 503, description: 'Serviço de IA temporariamente indisponível' })
+  @Post('workout/suggest')
+  suggestWorkout(@TenantId() tenantId: string, @Body() dto: WorkoutSuggestDto) {
+    return this.aiService.suggestWorkout(tenantId, dto);
   }
 
   @ApiOperation({

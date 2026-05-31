@@ -14,6 +14,15 @@ export class WorkoutsService {
     return { data: exercise };
   }
 
+  async getExerciseMedia(tenantId: string, id: string): Promise<object> {
+    const exercise = await this.prisma.exercise.findFirst({
+      where: { id, tenantId },
+      select: { id: true, name: true, gifUrl: true, videoUrl: true, thumbnailUrl: true },
+    });
+    if (!exercise) throw new NotFoundException('Exercício não encontrado');
+    return { data: exercise };
+  }
+
   async findAllExercises(tenantId: string, query: PaginationDto & { category?: string }): Promise<object> {
     const { category } = query;
     const page = Number(query.page) || 1;

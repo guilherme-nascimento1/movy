@@ -14,7 +14,7 @@ import {
   EnrollmentStatus,
   PaymentStatus,
 } from '../../common/enums';
-import { AiChatDto, GenerateMessageDto } from './dto/ai.dto';
+import { AiChatDto, GenerateMessageDto, WorkoutSuggestDto } from './dto/ai.dto';
 
 const CLAUDE_MODEL = 'claude-sonnet-4-6';
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
@@ -367,6 +367,79 @@ Regras:
       return { data: { message, variables } };
     } catch (err: unknown) {
       this.logger.error(`Erro na Claude API (messages): ${(err as Error).message}`);
+      throw new ServiceUnavailableException('Serviço de IA temporariamente indisponível');
+    }
+  }
+
+  // ─── SUGESTÃO DE TREINO ────────────────────────────────────
+
+  async suggestWorkout(tenantId: string, dto: WorkoutSuggestDto): Promise<object> {
+    await this.enforceRateLimit(tenantId);
+
+    const student = await this.prisma.student.findFirst({
+      where: { id: dto.studentId, tenantId },
+      select: {
+        name: true,
+        physicalEvals: {
+          orderBy: { evaluatedAt: 'desc' },
+          take: 1,
+          select: { weight: true, height: true, bodyFat: true, objectives: true },
+        },
+        workouts: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { name: true, items: { include: { exercise: { select: { name: true, category: true } } } } },
+        },
+      },
+    });
+
+    if (!student) {
+      return { data: null, error: { code: 'STUDENT_NOT_FOUND', message: 'Aluno não encontrado' } };
+    }
+
+    const eval_ = student.physicalEvals[0];
+    const lastWorkout = student.workouts[0];
+
+    const prompt = `Você é um personal trainer especialista. Crie uma ficha de treino personalizada em português.
+
+DADOS DO ALUNO:
+Nome: ${student.name}
+Objetivo: ${dto.goal}
+Modalidade: ${dto.modality}
+Dias disponíveis por semana: ${dto.availableDays}
+${dto.restrictions ? `Restrições: ${dto.restrictions}` : ''}
+${eval_ ? `Peso: ${eval_.weight}kg | Gordura corporal: ${eval_.bodyFat}%` : ''}
+${lastWorkout ? `Último treino: ${lastWorkout.name} com ${lastWorkout.items.length} exercícios` : 'Nenhum treino anterior'}
+
+Responda APENAS com JSON válido neste formato:
+{
+  "workout": {
+    "name": "Nome da ficha",
+    "notes": "Observações gerais",
+    "exercises": [
+      { "name": "Nome do exercício", "sets": 3, "reps": "12", "restSecs": 60, "notes": "Dica técnica" }
+    ]
+  },
+  "rationale": "Explicação breve de por que este treino foi escolhido"
+}`;
+
+    try {
+      const response = await this.anthropic.messages.create({
+        model: CLAUDE_MODEL,
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: prompt }],
+      });
+
+      const text = response.content[0].type === 'text' ? response.content[0].text : '{}';
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      const parsed = jsonMatch ? (JSON.parse(jsonMatch[0]) as { workout: unknown; rationale: string }) : { workout: null, rationale: '' };
+      const tokensUsed = response.usage.input_tokens + response.usage.output_tokens;
+
+      await this.logUsage(tenantId, 'workout_suggest', tokensUsed);
+
+      return { data: parsed };
+    } catch (err: unknown) {
+      this.logger.error(`Erro na Claude API (workout suggest): ${(err as Error).message}`);
       throw new ServiceUnavailableException('Serviço de IA temporariamente indisponível');
     }
   }

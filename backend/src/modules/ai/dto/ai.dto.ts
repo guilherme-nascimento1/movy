@@ -38,6 +38,27 @@ export class AiChatDto {
   history?: ChatHistoryItemDto[];
 }
 
+export class WorkoutSuggestDto {
+  @ApiProperty({ example: 'uuid-do-aluno' })
+  @IsString() @IsNotEmpty()
+  studentId: string;
+
+  @ApiProperty({ example: 'Hipertrofia', description: 'Objetivo do treino' })
+  @IsString() @IsNotEmpty()
+  goal: string;
+
+  @ApiProperty({ example: 'MUSCULACAO', description: 'Modalidade do treino' })
+  @IsString() @IsNotEmpty()
+  modality: string;
+
+  @ApiProperty({ example: 4, description: 'Dias disponíveis por semana' })
+  availableDays: number;
+
+  @ApiPropertyOptional({ example: 'Joelho direito com lesão', description: 'Restrições físicas' })
+  @IsOptional() @IsString()
+  restrictions?: string;
+}
+
 export class GenerateMessageDto {
   @ApiProperty({
     enum: ['cobranca', 'ausencia', 'aniversario', 'reativacao'],
