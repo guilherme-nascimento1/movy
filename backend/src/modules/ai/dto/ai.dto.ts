@@ -41,18 +41,18 @@ export class AiChatDto {
 export class WorkoutSuggestDto {
   @ApiProperty({ example: 'uuid-do-aluno' })
   @IsString() @IsNotEmpty()
-  studentId: string;
+  studentId!: string;
 
   @ApiProperty({ example: 'Hipertrofia', description: 'Objetivo do treino' })
   @IsString() @IsNotEmpty()
-  goal: string;
+  goal!: string;
 
   @ApiProperty({ example: 'MUSCULACAO', description: 'Modalidade do treino' })
   @IsString() @IsNotEmpty()
-  modality: string;
+  modality!: string;
 
   @ApiProperty({ example: 4, description: 'Dias disponíveis por semana' })
-  availableDays: number;
+  availableDays!: number;
 
   @ApiPropertyOptional({ example: 'Joelho direito com lesão', description: 'Restrições físicas' })
   @IsOptional() @IsString()

@@ -4,19 +4,19 @@ import { IsString, IsNotEmpty, IsOptional, IsNumber, IsDateString, IsInt, Min } 
 export class CreateSessionPackageDto {
   @ApiProperty({ example: 'uuid-do-aluno' })
   @IsString() @IsNotEmpty()
-  studentId: string;
+  studentId!: string;
 
   @ApiProperty({ example: 'uuid-do-personal', description: 'userId do personal trainer' })
   @IsString() @IsNotEmpty()
-  personalId: string;
+  personalId!: string;
 
   @ApiProperty({ example: 10, description: 'Total de sessões no pacote' })
   @IsInt() @Min(1)
-  totalSessions: number;
+  totalSessions!: number;
 
   @ApiProperty({ example: 1500.0, description: 'Valor total do pacote (R$)' })
   @IsNumber()
-  price: number;
+  price!: number;
 
   @ApiPropertyOptional({ example: '2025-12-31', description: 'Data de validade do pacote' })
   @IsOptional() @IsDateString()
@@ -26,11 +26,11 @@ export class CreateSessionPackageDto {
 export class ScheduleSessionDto {
   @ApiProperty({ example: 'uuid-do-aluno' })
   @IsString() @IsNotEmpty()
-  studentId: string;
+  studentId!: string;
 
   @ApiProperty({ example: 'uuid-do-personal', description: 'userId do personal' })
   @IsString() @IsNotEmpty()
-  personalId: string;
+  personalId!: string;
 
   @ApiPropertyOptional({ example: 'uuid-do-pacote' })
   @IsOptional() @IsString()
@@ -38,7 +38,7 @@ export class ScheduleSessionDto {
 
   @ApiProperty({ example: '2025-06-20T09:00:00Z', description: 'Data e hora da sessão (ISO 8601)' })
   @IsDateString()
-  scheduledAt: string;
+  scheduledAt!: string;
 
   @ApiPropertyOptional({ example: 'Foco em HIIT nessa sessão' })
   @IsOptional() @IsString()

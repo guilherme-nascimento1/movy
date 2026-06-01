@@ -4,7 +4,7 @@ import { IsString, IsNotEmpty, IsOptional, IsDateString } from 'class-validator'
 export class CreateDanceEventDto {
   @ApiProperty({ example: 'Festival de Dança 2025' })
   @IsString() @IsNotEmpty()
-  name: string;
+  name!: string;
 
   @ApiPropertyOptional({ example: 'Ballet', description: 'Estilo de dança do evento' })
   @IsOptional() @IsString()
@@ -12,7 +12,7 @@ export class CreateDanceEventDto {
 
   @ApiProperty({ example: '2025-08-10', description: 'Data do evento (ISO 8601)' })
   @IsDateString()
-  date: string;
+  date!: string;
 
   @ApiPropertyOptional({ example: 'Teatro Municipal' })
   @IsOptional() @IsString()

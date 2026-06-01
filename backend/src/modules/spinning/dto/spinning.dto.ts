@@ -5,11 +5,11 @@ export class CreateEquipmentDto {
   @ApiProperty({ example: 'BIKE', description: 'Tipo: BIKE, REFORMER, CADILLAC, CHAIR, BARREL' })
   @IsString() @IsNotEmpty()
   @IsIn(['BIKE', 'REFORMER', 'CADILLAC', 'CHAIR', 'BARREL'])
-  type: string;
+  type!: string;
 
   @ApiProperty({ example: 'Bike 01', description: 'Identificador do equipamento' })
   @IsString() @IsNotEmpty()
-  identifier: string;
+  identifier!: string;
 
   @ApiPropertyOptional({ example: '2025-03-01', description: 'Data da última manutenção' })
   @IsOptional() @IsDateString()
@@ -24,7 +24,7 @@ export class UpdateEquipmentStatusDto {
   @ApiProperty({ example: 'MAINTENANCE', description: 'ACTIVE, MAINTENANCE, RETIRED' })
   @IsString()
   @IsIn(['ACTIVE', 'MAINTENANCE', 'RETIRED'])
-  status: string;
+  status!: string;
 
   @ApiPropertyOptional()
   @IsOptional() @IsString()

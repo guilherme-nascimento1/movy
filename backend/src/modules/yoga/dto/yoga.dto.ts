@@ -4,7 +4,7 @@ import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 export class CreateAsanaDto {
   @ApiProperty({ example: 'Cão Olhando para Baixo' })
   @IsString() @IsNotEmpty()
-  namePt: string;
+  namePt!: string;
 
   @ApiPropertyOptional({ example: 'Adho Mukha Svanasana' })
   @IsOptional() @IsString()

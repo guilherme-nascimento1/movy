@@ -74,7 +74,7 @@ export class TenantsService {
           tenantId,
           userId,
           action: 'ONBOARDING_COMPLETE',
-          before: null,
+          before: Prisma.JsonNull,
           after: { modalities: dto.modalities, businessName: dto.businessName },
         },
       }),
