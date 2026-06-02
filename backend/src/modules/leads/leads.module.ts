@@ -13,6 +13,6 @@ import { IntegrationsModule } from '../integrations/integrations.module';
   ],
   providers: [LeadsService, LeadScoringService, LeadEventService],
   controllers: [LeadsController],
-  exports: [LeadScoringService, LeadEventService, LEADS_QUEUE],
+  exports: [LeadScoringService, LeadEventService],
 })
 export class LeadsModule {}
