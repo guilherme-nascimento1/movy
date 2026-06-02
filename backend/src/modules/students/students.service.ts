@@ -1,13 +1,32 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { StudentQueryDto } from './dto/student-query.dto';
 import { buildMeta } from '../../common/dto/pagination.dto';
+import { LEADS_QUEUE } from '../leads/leads.service';
+
+export class CancelStudentDto {
+  cancellationReason?: string; // PRECO | MUDANCA | LESAO | TEMPO | OUTRO
+}
+
+// Delay de reativação por motivo
+const REACTIVATION_DELAYS: Record<string, number> = {
+  PRECO:   30 * 86400000,
+  MUDANCA: 90 * 86400000,
+  LESAO:   60 * 86400000,
+  TEMPO:   90 * 86400000,
+  OUTRO:   30 * 86400000,
+};
 
 @Injectable()
 export class StudentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @InjectQueue(LEADS_QUEUE) private leadsQueue: Queue,
+  ) {}
 
   async create(tenantId: string, dto: CreateStudentDto): Promise<object> {
     if (dto.cpf) {
@@ -73,5 +92,25 @@ export class StudentsService {
     await this.findOne(tenantId, id);
     await this.prisma.student.update({ where: { id }, data: { status: 'INACTIVE' } });
     return { data: { message: 'Aluno inativado com sucesso' } };
+  }
+
+  async cancel(tenantId: string, id: string, dto: CancelStudentDto): Promise<object> {
+    const student = await this.prisma.student.findFirst({ where: { id, tenantId } });
+    if (!student) throw new NotFoundException('Aluno não encontrado');
+
+    const reason = dto.cancellationReason ?? 'OUTRO';
+    await this.prisma.student.update({
+      where: { id },
+      data: { status: 'INACTIVE', cancellationReason: reason },
+    });
+
+    const delay = REACTIVATION_DELAYS[reason] ?? REACTIVATION_DELAYS['OUTRO'];
+    await this.leadsQueue.add(
+      'reactivation',
+      { type: 'REACTIVATION', tenantId, studentId: id, reason },
+      { attempts: 3, delay },
+    );
+
+    return { data: { message: 'Aluno cancelado. Campanha de reativação agendada.' } };
   }
 }

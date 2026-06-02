@@ -3,10 +3,14 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CreatePaymentDto, UpdatePaymentDto } from './dto/create-payment.dto';
 import { PaginationDto, buildMeta } from '../../common/dto/pagination.dto';
 import { PaymentStatus } from '../../common/enums';
+import { MetaConversionsService } from '../integrations/meta-conversions.service';
 
 @Injectable()
 export class PaymentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private meta: MetaConversionsService,
+  ) {}
 
   async create(tenantId: string, dto: CreatePaymentDto): Promise<object> {
     const enrollment = await this.prisma.enrollment.findFirst({ where: { id: dto.enrollmentId, tenantId } });
@@ -89,6 +93,18 @@ export class PaymentsService {
   }
 
   async confirmPayment(tenantId: string, id: string): Promise<object> {
-    return this.update(tenantId, id, { status: PaymentStatus.PAID, paidAt: new Date().toISOString() });
+    const result = await this.update(tenantId, id, { status: PaymentStatus.PAID, paidAt: new Date().toISOString() });
+    const payment = (result as { data: { amount: number; enrollment: { student: { email?: string | null; phone?: string | null; name: string } } } }).data;
+
+    // v5.1 — Meta Purchase event (fire-and-forget)
+    this.meta.sendPurchaseEvent({
+      value: Number(payment.amount),
+      userEmail: payment.enrollment.student.email,
+      userPhone: payment.enrollment.student.phone,
+      userName: payment.enrollment.student.name,
+      orderId: id,
+    }).catch(() => void 0);
+
+    return result;
   }
 }

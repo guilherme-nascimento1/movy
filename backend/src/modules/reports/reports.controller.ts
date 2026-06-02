@@ -71,4 +71,33 @@ export class ReportsController {
     res.setHeader('Content-Disposition', 'attachment; filename="inadimplencia.xlsx"');
     res.send(buffer);
   }
+
+  @ApiOperation({ summary: 'Relatório de aquisição', description: 'Leads, conversão, canal de origem (UTM), funil por estágio e tempo médio de conversão' })
+  @ApiQuery({ name: 'period', required: false, enum: ['week', 'month', 'quarter'], description: 'Período (default: month)' })
+  @ApiResponse({ status: 200, schema: { properties: { data: { properties: { totalLeads: { type: 'number' }, conversionRate: { type: 'number' }, byChannel: { type: 'array' }, funnelStages: { type: 'array' } } } } } })
+  @Get('acquisition')
+  acquisition(
+    @TenantId() tenantId: string,
+    @Query('period') period = 'month',
+  ): Promise<object> {
+    return this.reportsService.acquisitionReport(tenantId, period);
+  }
+
+  @ApiOperation({ summary: 'Relatório de vendas / MRR', description: 'MRR novo, recorrente, projeção e taxa de conversão de aulas experimentais' })
+  @ApiQuery({ name: 'period', required: false, enum: ['week', 'month'], description: 'Período (default: month)' })
+  @ApiResponse({ status: 200, schema: { properties: { data: { properties: { newMrr: { type: 'number' }, recurringMrr: { type: 'number' }, totalMrr: { type: 'number' }, projectedMrr: { type: 'number' }, trialConversionRate: { type: 'number' } } } } } })
+  @Get('sales')
+  sales(
+    @TenantId() tenantId: string,
+    @Query('period') period = 'month',
+  ): Promise<object> {
+    return this.reportsService.salesReport(tenantId, period);
+  }
+
+  @ApiOperation({ summary: 'Relatório NPS', description: 'Score médio, NPS calculado (% promotores - % detratores × 100), distribuição e comentários recentes' })
+  @ApiResponse({ status: 200, schema: { properties: { data: { properties: { averageScore: { type: 'number' }, npsScore: { type: 'number' }, distribution: { type: 'object' }, recentComments: { type: 'array' } } } } } })
+  @Get('nps')
+  npsReport(@TenantId() tenantId: string): Promise<object> {
+    return this.reportsService.npsReport(tenantId);
+  }
 }

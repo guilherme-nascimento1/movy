@@ -134,6 +134,9 @@ model TenantSettings {
   termForInstructor String   @default("Professor")
   primaryColor      String   @default("#6366F1")
   dashboardModules  String[] @default(["alunos-ativos", "receita", "inadimplentes", "novos-alunos"])
+  // v4 — CRM config
+  leadSlaConfig     Json     @default("{\"NEW\":24,\"CONTACTED\":72,\"DEMO\":48,\"NEGOTIATION\":96}")
+  welcomeJourney    Json     @default("{\"d1\":true,\"d7\":true,\"d30\":true,\"d60\":true,\"d90\":true}")
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }
@@ -215,6 +218,8 @@ model Student {
   combatRecords     CombatRecord[]
   personalSessions  PersonalSession[]
   sessionPackages   SessionPackage[]
+  // v4 — reativação
+  cancellationReason String?   // PRECO | MUDANCA | LESAO | TEMPO | OUTRO
 
   @@index([tenantId])
   @@index([tenantId, status])
@@ -398,9 +403,57 @@ model Lead {
   notes     String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  // v4.1 — Lead Scoring
+  score            Int       @default(0)
+  scoreUpdatedAt   DateTime?
+  scoreBreakdown   Json?
+  // v4.2 — SLA
+  assignedTo     String?
+  stageEnteredAt DateTime  @default(now())
+  stageSlaHours  Int       @default(24)
+  // v4.4 — UTM Tracking
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmContent  String?
+  // v4.5 — Aula Experimental
+  trialClassAt       DateTime?
+  trialClassAttended Boolean   @default(false)
+  // relations
+  events LeadEvent[]
 
   @@index([tenantId])
   @@index([tenantId, stage])
+  @@index([tenantId, score])
+}
+
+// v4.3 — LeadEvent (log imutável)
+model LeadEvent {
+  id        String   @id @default(uuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  tenantId  String
+  type      String
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  @@index([leadId])
+  @@index([tenantId])
+}
+
+// v4.6 — NPS
+model NpsResponse {
+  id        String   @id @default(uuid())
+  tenantId  String
+  studentId String?
+  leadId    String?
+  score     Int
+  comment   String?
+  type      String   // satisfaction | exit
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, type])
 }
 
 // ─── PHYSICAL EVAL (avaliação física) ───────────────────

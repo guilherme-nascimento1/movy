@@ -24,6 +24,8 @@ import { UnitsModule } from './modules/units/units.module';
 import { IntegrationsModule } from './modules/integrations/integrations.module';
 import { TeamModule } from './modules/team/team.module';
 import { AiModule } from './modules/ai/ai.module';
+// v4 — CRM Inteligente
+import { NpsModule } from './modules/nps/nps.module';
 // v3 — novos módulos
 import { DevicesModule } from './modules/devices/devices.module';
 import { YogaModule } from './modules/yoga/yoga.module';
@@ -61,6 +63,8 @@ import { PilatesModule } from './modules/pilates/pilates.module';
     IntegrationsModule,
     TeamModule,
     AiModule,
+    // v4
+    NpsModule,
     // v3
     DevicesModule,
     YogaModule,

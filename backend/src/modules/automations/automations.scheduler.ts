@@ -1,7 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { AutomationsService } from './automations.service';
 import { AiService } from '../ai/ai.service';
+import { LEADS_QUEUE } from './processors/leads.processor';
 
 @Injectable()
 export class AutomationsScheduler {
@@ -10,6 +13,7 @@ export class AutomationsScheduler {
   constructor(
     private automations: AutomationsService,
     private aiService: AiService,
+    @InjectQueue(LEADS_QUEUE) private leadsQueue: Queue,
   ) {}
 
   @Cron('0 6 * * *', { name: 'mark-overdue', timeZone: 'America/Sao_Paulo' })
@@ -46,5 +50,17 @@ export class AutomationsScheduler {
   async churnRiskCalculation(): Promise<void> {
     this.logger.log('[Cron 03:00] Iniciando cálculo de churn risk');
     await this.aiService.calculateAllChurnRisks();
+  }
+
+  @Cron('5 6 * * *', { name: 'lead-score-decay', timeZone: 'America/Sao_Paulo' })
+  async leadScoreDecay(): Promise<void> {
+    this.logger.log('[Cron 06:05] Iniciando decay de score de leads');
+    await this.leadsQueue.add('lead-score-decay', { type: 'LEAD_SCORE_DECAY' }, { attempts: 3 });
+  }
+
+  @Cron('0 * * * *', { name: 'lead-sla-check', timeZone: 'America/Sao_Paulo' })
+  async leadSlaCheck(): Promise<void> {
+    this.logger.log('[Cron horário] Iniciando verificação de SLA de leads');
+    await this.leadsQueue.add('lead-sla-check', { type: 'LEAD_SLA_CHECK' }, { attempts: 3 });
   }
 }

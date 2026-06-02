@@ -1,6 +1,6 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
-import { StudentsService } from './students.service';
+import { StudentsService, CancelStudentDto } from './students.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { StudentQueryDto } from './dto/student-query.dto';
@@ -60,5 +60,22 @@ export class StudentsController {
   @Delete(':id')
   remove(@TenantId() tenantId: string, @Param('id') id: string): Promise<object> {
     return this.studentsService.remove(tenantId, id);
+  }
+
+  @ApiOperation({
+    summary: 'Cancelar aluno com motivo',
+    description: 'Inativa o aluno e agenda campanha de reativação automática por WhatsApp com base no motivo de saída. Motivos: PRECO (D+30), MUDANCA (D+90), LESAO (D+60), TEMPO (D+90), OUTRO (D+30).',
+  })
+  @ApiParam({ name: 'id', description: 'UUID do aluno' })
+  @ApiResponse({ status: 200, schema: { properties: { data: { properties: { message: { type: 'string' } } } } } })
+  @ApiResponse({ status: 404, description: 'Aluno não encontrado' })
+  @HttpCode(HttpStatus.OK)
+  @Patch(':id/cancel')
+  cancel(
+    @TenantId() tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: CancelStudentDto,
+  ): Promise<object> {
+    return this.studentsService.cancel(tenantId, id, dto);
   }
 }

@@ -12,8 +12,15 @@ export type BirthdayJob = { type: 'BIRTHDAY'; tenantId: string; studentId: strin
 export type AbsenceJob = { type: 'ABSENCE'; tenantId: string; studentId: string; days: number };
 export type EnrollmentExpiryJob = { type: 'ENROLLMENT_EXPIRY'; tenantId: string; studentId: string; enrollmentId: string; daysLeft: number };
 export type LeadFollowUpJob = { type: 'LEAD_FOLLOWUP'; tenantId: string; leadId: string };
+export type NpsJob = { type: 'NPS_SATISFACTION' | 'NPS_EXIT'; tenantId: string; studentId: string; enrollmentId: string };
+export type JourneyJob = {
+  type: 'JOURNEY_D1' | 'JOURNEY_D7' | 'JOURNEY_D30' | 'JOURNEY_D60' | 'JOURNEY_D90';
+  tenantId: string;
+  studentId: string;
+  enrollmentId: string;
+};
 
-type NotifJob = BirthdayJob | AbsenceJob | EnrollmentExpiryJob | LeadFollowUpJob;
+type NotifJob = BirthdayJob | AbsenceJob | EnrollmentExpiryJob | LeadFollowUpJob | NpsJob | JourneyJob;
 
 @Processor(NOTIFICATIONS_QUEUE)
 export class NotificationsProcessor extends WorkerHost {
@@ -29,10 +36,17 @@ export class NotificationsProcessor extends WorkerHost {
 
   async process(job: Job<NotifJob>): Promise<void> {
     switch (job.data.type) {
-      case 'BIRTHDAY': return this.handleBirthday(job.data);
-      case 'ABSENCE': return this.handleAbsence(job.data);
-      case 'ENROLLMENT_EXPIRY': return this.handleEnrollmentExpiry(job.data);
-      case 'LEAD_FOLLOWUP': return this.handleLeadFollowUp(job.data);
+      case 'BIRTHDAY':           return this.handleBirthday(job.data as BirthdayJob);
+      case 'ABSENCE':            return this.handleAbsence(job.data as AbsenceJob);
+      case 'ENROLLMENT_EXPIRY':  return this.handleEnrollmentExpiry(job.data as EnrollmentExpiryJob);
+      case 'LEAD_FOLLOWUP':      return this.handleLeadFollowUp(job.data as LeadFollowUpJob);
+      case 'NPS_SATISFACTION':   return this.handleNps(job.data as NpsJob);
+      case 'NPS_EXIT':           return this.handleNps(job.data as NpsJob);
+      case 'JOURNEY_D1':         return this.handleJourney(job.data as JourneyJob);
+      case 'JOURNEY_D7':         return this.handleJourney(job.data as JourneyJob);
+      case 'JOURNEY_D30':        return this.handleJourney(job.data as JourneyJob);
+      case 'JOURNEY_D60':        return this.handleJourney(job.data as JourneyJob);
+      case 'JOURNEY_D90':        return this.handleJourney(job.data as JourneyJob);
     }
   }
 
@@ -86,6 +100,50 @@ export class NotificationsProcessor extends WorkerHost {
     const sent = await this.evolution.sendText(lead.phone, message);
 
     await this.logNotification(data.tenantId, 'LEAD_FOLLOWUP', NotifChannel.WHATSAPP, sent, { leadId: data.leadId, message });
+  }
+
+  // ── NPS ─────────────────────────────────────────────────
+  private async handleNps(data: NpsJob): Promise<void> {
+    const student = await this.prisma.student.findFirst({ where: { id: data.studentId, tenantId: data.tenantId } });
+    if (!student?.phone) return;
+
+    const isSatisfaction = data.type === 'NPS_SATISFACTION';
+    const message = isSatisfaction
+      ? `Olá ${student.name}! 😊 Você está conosco há 30 dias — ótimo! De 0 a 10, o quanto você indicaria nossa academia para um amigo? Responda com um número.`
+      : `Olá ${student.name}! Sentimos muito pela sua saída. Poderia nos contar sua nota de 0 a 10 para melhorarmos? Sua opinião é muito importante!`;
+
+    const sent = await this.evolution.sendText(student.phone, message);
+    await this.logNotification(data.tenantId, data.type, NotifChannel.WHATSAPP, sent, {
+      studentId: data.studentId, enrollmentId: data.enrollmentId,
+    });
+  }
+
+  // ── Jornada pós-matrícula ────────────────────────────────
+  private async handleJourney(data: JourneyJob): Promise<void> {
+    const student = await this.prisma.student.findFirst({ where: { id: data.studentId, tenantId: data.tenantId } });
+    if (!student?.phone) return;
+
+    // Verificar se a matrícula ainda está ativa
+    const enrollment = await this.prisma.enrollment.findFirst({
+      where: { id: data.enrollmentId, status: 'ACTIVE' },
+    });
+    if (!enrollment) return;
+
+    const messages: Record<string, string> = {
+      JOURNEY_D1:  `Bem-vindo, ${student.name}! 🎉 Estamos muito felizes em ter você aqui. Qualquer dúvida sobre horários ou treinos, é só falar!`,
+      JOURNEY_D7:  `Olá ${student.name}! 💪 Como estão sendo seus primeiros treinos? Sua evolução nos importa muito!`,
+      JOURNEY_D30: `Olá ${student.name}! 🌟 Um mês de treinos — você está indo muito bem! De 0 a 10, o quanto você indicaria nossa academia para um amigo?`,
+      JOURNEY_D60: `Olá ${student.name}! 📊 Já são 2 meses de dedicação! Que tal agendar uma avaliação física para ver sua evolução?`,
+      JOURNEY_D90: `Parabéns, ${student.name}! 🏆 3 meses de comprometimento. Você já alcançou resultados incríveis! Conheça nossos planos com mais benefícios.`,
+    };
+
+    const message = messages[data.type];
+    if (!message) return;
+
+    const sent = await this.evolution.sendText(student.phone, message);
+    await this.logNotification(data.tenantId, data.type, NotifChannel.WHATSAPP, sent, {
+      studentId: data.studentId, enrollmentId: data.enrollmentId,
+    });
   }
 
   private async logNotification(

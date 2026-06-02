@@ -7,14 +7,17 @@ import { AutomationsService } from './automations.service';
 import { AutomationsScheduler } from './automations.scheduler';
 import { PaymentsProcessor, PAYMENTS_QUEUE } from './processors/payments.processor';
 import { NotificationsProcessor, NOTIFICATIONS_QUEUE } from './processors/notifications.processor';
+import { LeadsProcessor, LEADS_QUEUE } from './processors/leads.processor';
 import { EvolutionApiService } from './services/evolution-api.service';
 import { ResendService } from './services/resend.service';
 import { AiModule } from '../ai/ai.module';
+import { LeadsModule } from '../leads/leads.module';
 
 @Module({
   imports: [
     ConfigModule,
     AiModule,
+    LeadsModule,
     ScheduleModule.forRoot(),
     BullModule.forRootAsync({
       imports: [ConfigModule],
@@ -23,7 +26,11 @@ import { AiModule } from '../ai/ai.module';
       }),
       inject: [ConfigService],
     }),
-    BullModule.registerQueue({ name: PAYMENTS_QUEUE }, { name: NOTIFICATIONS_QUEUE }),
+    BullModule.registerQueue(
+      { name: PAYMENTS_QUEUE },
+      { name: NOTIFICATIONS_QUEUE },
+      { name: LEADS_QUEUE },
+    ),
   ],
   controllers: [AutomationsController],
   providers: [
@@ -31,9 +38,10 @@ import { AiModule } from '../ai/ai.module';
     AutomationsScheduler,
     PaymentsProcessor,
     NotificationsProcessor,
+    LeadsProcessor,
     EvolutionApiService,
     ResendService,
   ],
-  exports: [EvolutionApiService, ResendService],
+  exports: [AutomationsService, EvolutionApiService, ResendService],
 })
 export class AutomationsModule {}

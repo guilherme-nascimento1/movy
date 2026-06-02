@@ -124,6 +124,163 @@ export class ReportsService {
     );
   }
 
+  // ── 4.9 — Aquisição ──────────────────────────────────────
+  async acquisitionReport(tenantId: string, period: string): Promise<object> {
+    const { start, end } = this.periodRange(period);
+
+    const [totalLeads, convertedLeads, leads] = await Promise.all([
+      this.prisma.lead.count({ where: { tenantId, createdAt: { gte: start, lte: end } } }),
+      this.prisma.lead.count({ where: { tenantId, stage: 'WON', createdAt: { gte: start, lte: end } } }),
+      this.prisma.lead.findMany({
+        where: { tenantId, createdAt: { gte: start, lte: end } },
+        select: { stage: true, utmSource: true, stageEnteredAt: true, createdAt: true },
+      }),
+    ]);
+
+    const conversionRate = totalLeads > 0 ? Math.round((convertedLeads / totalLeads) * 100) : 0;
+
+    // Agrupamento por canal UTM
+    const channelMap = new Map<string, { leads: number; converted: number }>();
+    for (const lead of leads) {
+      const channel = lead.utmSource ?? 'direto';
+      if (!channelMap.has(channel)) channelMap.set(channel, { leads: 0, converted: 0 });
+      const c = channelMap.get(channel)!;
+      c.leads++;
+      if (lead.stage === 'WON') c.converted++;
+    }
+
+    const byChannel = Array.from(channelMap.entries()).map(([utmSource, data]) => ({
+      utmSource,
+      leads: data.leads,
+      converted: data.converted,
+      conversionRate: data.leads > 0 ? Math.round((data.converted / data.leads) * 100) : 0,
+    }));
+
+    // Funil por estágio
+    const stageMap = new Map<string, number>();
+    for (const lead of leads) stageMap.set(lead.stage, (stageMap.get(lead.stage) ?? 0) + 1);
+
+    const funnelStages = Array.from(stageMap.entries()).map(([stage, count]) => ({ stage, count }));
+
+    // Tempo médio para conversão
+    const convertedWithTime = leads.filter((l) => l.stage === 'WON');
+    const avgTimeToConversion = convertedWithTime.length > 0
+      ? Math.round(convertedWithTime.reduce((s, l) => s + (l.stageEnteredAt.getTime() - l.createdAt.getTime()), 0) / convertedWithTime.length / 86400000)
+      : 0;
+
+    return { data: { totalLeads, convertedLeads, conversionRate, byChannel, funnelStages, avgTimeToConversion } };
+  }
+
+  // ── 4.9 — Vendas / MRR ───────────────────────────────────
+  async salesReport(tenantId: string, period: string): Promise<object> {
+    const { start, end } = this.periodRange(period);
+
+    const payments = await this.prisma.payment.findMany({
+      where: { tenantId, status: 'PAID', paidAt: { gte: start, lte: end } },
+      include: { enrollment: true },
+    });
+
+    const reactivations = await this.prisma.student.count({
+      where: { tenantId, status: 'ACTIVE', updatedAt: { gte: start, lte: end }, cancellationReason: { not: null } },
+    });
+
+    const totalPaid = payments.reduce((s, p) => s + Number(p.amount), 0);
+
+    // Separar receita nova vs recorrente (nova = enrollment criado no período)
+    const newEnrollmentIds = (await this.prisma.enrollment.findMany({
+      where: { tenantId, createdAt: { gte: start, lte: end } },
+      select: { id: true },
+    })).map((e) => e.id);
+
+    const newMrr = payments.filter((p) => newEnrollmentIds.includes(p.enrollmentId)).reduce((s, p) => s + Number(p.amount), 0);
+    const recurringMrr = totalPaid - newMrr;
+
+    // Projeção: média dos últimos 3 meses
+    const threeMonthsAgo = new Date(start);
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const historicPaid = await this.prisma.payment.aggregate({
+      where: { tenantId, status: 'PAID', paidAt: { gte: threeMonthsAgo, lte: start } },
+      _sum: { amount: true },
+    });
+    const projectedMrr = Number(historicPaid._sum.amount ?? 0) / 3;
+
+    const trialConversions = await this.prisma.lead.count({
+      where: { tenantId, stage: 'WON', trialClassAt: { not: null }, updatedAt: { gte: start, lte: end } },
+    });
+    const trialsScheduled = await this.prisma.lead.count({
+      where: { tenantId, trialClassAt: { not: null, gte: start, lte: end } },
+    });
+    const trialConversionRate = trialsScheduled > 0 ? Math.round((trialConversions / trialsScheduled) * 100) : 0;
+
+    return {
+      data: {
+        newMrr: Math.round(newMrr * 100) / 100,
+        recurringMrr: Math.round(recurringMrr * 100) / 100,
+        reactivationMrr: 0,
+        totalMrr: Math.round(totalPaid * 100) / 100,
+        projectedMrr: Math.round(projectedMrr * 100) / 100,
+        trialConversionRate,
+        reactivations,
+      },
+    };
+  }
+
+  // ── 4.6 — NPS report ─────────────────────────────────────
+  async npsReport(tenantId: string): Promise<object> {
+    const responses = await this.prisma.npsResponse.findMany({
+      where: { tenantId },
+      select: { score: true, comment: true, type: true, createdAt: true },
+    });
+
+    if (responses.length === 0) {
+      return { data: { averageScore: 0, npsScore: 0, total: 0, distribution: { promoters: 0, passives: 0, detractors: 0 }, recentComments: [] } };
+    }
+
+    const total = responses.length;
+    const promoters = responses.filter((r) => r.score >= 9).length;
+    const passives = responses.filter((r) => r.score >= 7 && r.score <= 8).length;
+    const detractors = responses.filter((r) => r.score <= 6).length;
+    const averageScore = responses.reduce((s, r) => s + r.score, 0) / total;
+    const npsScore = Math.round(((promoters - detractors) / total) * 100);
+
+    const recentComments = responses
+      .filter((r) => r.comment)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, 10);
+
+    return {
+      data: {
+        averageScore: Math.round(averageScore * 10) / 10,
+        npsScore,
+        total,
+        distribution: {
+          promoters: Math.round((promoters / total) * 100),
+          passives: Math.round((passives / total) * 100),
+          detractors: Math.round((detractors / total) * 100),
+        },
+        recentComments,
+      },
+    };
+  }
+
+  private periodRange(period: string): { start: Date; end: Date } {
+    const now = new Date();
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    let start: Date;
+
+    if (period === 'week') {
+      start = new Date(now);
+      start.setDate(now.getDate() - 7);
+    } else if (period === 'quarter') {
+      start = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+    } else {
+      // month (default)
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+    }
+
+    return { start, end };
+  }
+
   private buildDateWhere(tenantId: string, field: string, filters: ReportFilters): object {
     return {
       tenantId,
