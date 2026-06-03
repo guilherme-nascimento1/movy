@@ -15,6 +15,7 @@ export const corsConfig: CorsOptions = {
 
     // Permite qualquer subdomínio do Lovable (preview e produção)
     if (origin.endsWith('.lovable.app')) return callback(null, true);
+    if (origin.endsWith('.lovableproject.com')) return callback(null, true);
 
     // Permite origens explicitamente listadas
     if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
